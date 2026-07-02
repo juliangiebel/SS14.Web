@@ -11,12 +11,10 @@ namespace SS14.Web.Areas.Admin.Pages.Users;
 public class ConfirmDelete : PageModel
 {
     private readonly UserManager<SpaceUser> _userManager;
-    private readonly ApplicationDbContext _context;
 
-    public ConfirmDelete(UserManager<SpaceUser> userManager, ApplicationDbContext context)
+    public ConfirmDelete(UserManager<SpaceUser> userManager)
     {
         _userManager = userManager;
-        _context = context;
     }
 
     public SpaceUser SpaceUser { get; set; }
@@ -43,7 +41,6 @@ public class ConfirmDelete : PageModel
         }
 
         await _userManager.DeleteAsync(SpaceUser);
-        _context.DeletedUserIds.Add(new DeletedUser { SpaceUserId = SpaceUser.Id, DeletedOn = DateTime.UtcNow });
 
         TempData["StatusMessage"] = "User deleted";
         return RedirectToPage("./Index");

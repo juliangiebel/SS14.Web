@@ -13,21 +13,18 @@ namespace SS14.Web.Areas.Identity.Pages.Account.Manage
 {
     public class DeletePersonalDataModel : PageModel
     {
-        private readonly UserManager<SpaceUser> _userManager;
+        private readonly SpaceUserManager _userManager;
         private readonly SignInManager<SpaceUser> _signInManager;
-        private readonly ApplicationDbContext _context;
         private readonly ILogger<DeletePersonalDataModel> _logger;
 
         public DeletePersonalDataModel(
-            UserManager<SpaceUser> userManager,
+            SpaceUserManager userManager,
             SignInManager<SpaceUser> signInManager,
-            ILogger<DeletePersonalDataModel> logger,
-            ApplicationDbContext context)
+            ILogger<DeletePersonalDataModel> logger)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _logger = logger;
-            _context = context;
         }
 
         [BindProperty]
@@ -72,18 +69,11 @@ namespace SS14.Web.Areas.Identity.Pages.Account.Manage
                 }
             }
 
-            _context.DeletedUserIds.Add(new DeletedUser { SpaceUserId = user.Id, DeletedOn = DateTime.UtcNow });
-
-            var result = await _userManager.DeleteAsync(user);
             var userId = await _userManager.GetUserIdAsync(user);
-            if (!result.Succeeded)
-            {
-                throw new InvalidOperationException($"Unexpected error occurred deleting user with ID '{userId}'.");
-            }
-
+            _userManager.QueueDeletion(user);
             await _signInManager.SignOutAsync();
 
-            _logger.LogInformation("User with ID '{UserId}' deleted themselves.", userId);
+            _logger.LogInformation("User with ID '{UserId}' queued their deletion.", userId);
 
             return Redirect("~/");
         }

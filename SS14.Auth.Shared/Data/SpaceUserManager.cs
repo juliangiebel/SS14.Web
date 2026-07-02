@@ -27,8 +27,6 @@ public sealed class SpaceUserManager(
         store, optionsAccessor, passwordHasher, userValidators, passwordValidators, keyNormalizer,
         errors, services, logger)
 {
-    private readonly ApplicationDbContext _dbContext = dbContext;
-    private readonly ISystemClock _systemClock = systemClock;
     private readonly IServiceProvider _services = services;
 
     public override async Task<IdentityResult> CreateAsync(SpaceUser user)
@@ -53,5 +51,21 @@ public sealed class SpaceUserManager(
         }
 
         return await FindByEmailAsync(nameOrEmail);
+    }
+
+    public void QueueDeletion(SpaceUser user)
+    {
+        dbContext.UserDeletionQueue.Add(new UserDeletionQueueEntry {SpaceUserId = user.Id, QueuedOn = DateTime.UtcNow });
+        dbContext.SaveChanges();
+    }
+
+    ///<inheritdoc />
+    /// <remarks>
+    /// Stores the deleted user in the DeletedUserIds table.
+    /// </remarks>
+    public override async  Task<IdentityResult> DeleteAsync(SpaceUser user)
+    {
+        dbContext.DeletedUserIds.Add(new DeletedUser { SpaceUserId = user.Id, DeletedOn = DateTime.UtcNow });
+        return await base.DeleteAsync(user);
     }
 }
