@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Quartz;
@@ -19,7 +20,9 @@ public sealed class DeleteMarkedUsersJob(
     {
         var gracePeriod = configuration.GetValue<int>("AccountConfiguration:UserDeletionGracePeriodDays");
 
-        var entries = dbContext.UserDeletionQueue.Where(e => e.QueuedOn < DateTime.UtcNow.AddDays(-gracePeriod));
+        var entries = await dbContext.UserDeletionQueue
+            .Where(e => e.QueuedOn < DateTime.UtcNow.AddDays(-gracePeriod))
+            .ToListAsync();
         foreach (var entry in entries)
         {
             var user = await userManager.FindByIdAsync(entry.SpaceUserId.ToString());
@@ -34,7 +37,6 @@ public sealed class DeleteMarkedUsersJob(
             if (!result.Succeeded)
                 logger.LogError("Failed to delete user {Id} marked for deletion.", entry.SpaceUserId);
 
-            dbContext.UserDeletionQueue.Remove(entry);
         }
 
         await dbContext.SaveChangesAsync();

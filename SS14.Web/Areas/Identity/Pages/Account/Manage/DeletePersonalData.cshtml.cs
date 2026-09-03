@@ -14,18 +14,18 @@ namespace SS14.Web.Areas.Identity.Pages.Account.Manage
     public class DeletePersonalDataModel : PageModel
     {
         private readonly SpaceUserManager _userManager;
-        private readonly SignInManager<SpaceUser> _signInManager;
         private readonly ILogger<DeletePersonalDataModel> _logger;
 
         public DeletePersonalDataModel(
             SpaceUserManager userManager,
-            SignInManager<SpaceUser> signInManager,
             ILogger<DeletePersonalDataModel> logger)
         {
             _userManager = userManager;
-            _signInManager = signInManager;
             _logger = logger;
         }
+
+        [TempData]
+        public string StatusMessage { get; set; }
 
         [BindProperty]
         public InputModel Input { get; set; }
@@ -51,7 +51,23 @@ namespace SS14.Web.Areas.Identity.Pages.Account.Manage
             return Page();
         }
 
-        public async Task<IActionResult> OnPostAsync()
+        public async Task<IActionResult> OnPostCancelAsync()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null)
+            {
+                return NotFound($"Unable to load user with ID '{_userManager.GetUserId(User)}'.");
+            }
+
+            _userManager.CancelQueuedDeletion(user);
+
+            _logger.LogInformation("User with ID '{UserId}' queued their deletion.", user.Id);
+
+            StatusMessage = "Account deletion canceled.";
+            return RedirectToPage();
+        }
+
+        public async Task<IActionResult> OnPostDeleteAsync()
         {
             var user = await _userManager.GetUserAsync(User);
             if (user == null)
@@ -71,11 +87,11 @@ namespace SS14.Web.Areas.Identity.Pages.Account.Manage
 
             var userId = await _userManager.GetUserIdAsync(user);
             _userManager.QueueDeletion(user);
-            await _signInManager.SignOutAsync();
 
             _logger.LogInformation("User with ID '{UserId}' queued their deletion.", userId);
 
-            return Redirect("~/");
+            StatusMessage = "Account deletion queued.";
+            return RedirectToPage();
         }
     }
 }
